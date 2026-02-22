@@ -9,6 +9,15 @@ import {
 
 const TABLE = 'productsmenon_duplicate';
 
+const AVAILABILITY_OPTIONS = [
+  'Available in stock',
+  'Available in showroom Nasr City',
+  'Available in showroom Maadi',
+  'Available in showroom Faisal',
+  'Available in showroom 6th October City',
+  'Out of stock',
+];
+
 let allProducts = [];
 let searchTerm = '';
 let activeCategory = null; // null = "All"
@@ -121,6 +130,7 @@ function renderCard(p) {
           <span class="card-chip category">${escHtml(p.category)}</span>
           ${priceLabel ? `<span class="card-chip price">${escHtml(priceLabel)}</span>` : ''}
         </div>
+        ${p.availability ? `<div class="card-availability">${escHtml(p.availability)}</div>` : ''}
       </div>
       <div class="card-footer">
         <button title="View" data-action="view" data-id="${escHtml(p.product_id)}">${icons.eye}</button>
@@ -212,6 +222,10 @@ function openProductDetail(product) {
           <div class="detail-card-label">Category</div>
           <div class="detail-card-value"><span class="category-badge">${escHtml(product.category)}</span></div>
         </div>
+        <div class="detail-card">
+          <div class="detail-card-label">Availability</div>
+          <div class="detail-card-value">${escHtml(product.availability || '—')}</div>
+        </div>
         <div class="detail-card full-width">
           <div class="detail-card-label">Pricing</div>
           <div class="detail-card-value">${jsonToDetailHtml(product.pricing)}</div>
@@ -285,6 +299,22 @@ function openProductForm(product, viewContainer) {
       </div>
 
       <div class="form-group">
+        <label class="form-label">Availability</label>
+        <div class="multi-select-container" id="availability-container">
+          <div class="multi-select-trigger" id="availability-trigger">
+            <span id="availability-display">Select availability…</span>
+            ${icons.chevRight}
+          </div>
+          <div class="multi-select-dropdown hidden" id="availability-dropdown">
+            ${AVAILABILITY_OPTIONS.map(opt => {
+    const checked = isEdit && product.availability && product.availability.includes(opt) ? 'checked' : '';
+    return `<label class="multi-select-option"><input type="checkbox" value="${escHtml(opt)}" ${checked} /><span>${escHtml(opt)}</span></label>`;
+  }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
         <label class="form-label">Pricing</label>
         <div class="json-group" id="pricing-group">
           <div class="json-group-title">Key / Value</div>
@@ -351,6 +381,22 @@ function openProductForm(product, viewContainer) {
     }
   });
 
+  // Availability multi-select toggle
+  const availTrigger = document.getElementById('availability-trigger');
+  const availDropdown = document.getElementById('availability-dropdown');
+  const availDisplay = document.getElementById('availability-display');
+
+  function updateAvailDisplay() {
+    const checked = Array.from(document.querySelectorAll('#availability-dropdown input:checked')).map(cb => cb.value);
+    availDisplay.textContent = checked.length > 0 ? checked.join(' - ') : 'Select availability…';
+  }
+  updateAvailDisplay();
+
+  availTrigger?.addEventListener('click', () => {
+    availDropdown.classList.toggle('hidden');
+  });
+  availDropdown?.addEventListener('change', updateAvailDisplay);
+
   document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
   document.getElementById('modal-cancel-btn')?.addEventListener('click', closeModal);
   document.getElementById('modal-save-btn')?.addEventListener('click', () => saveProduct(isEdit, viewContainer));
@@ -402,7 +448,11 @@ async function saveProduct(isEdit, viewContainer) {
   const product_details = collectJson('details-rows');
   const photos = collectJson('photos-rows'); // JSON object, not array
 
-  const payload = { product_id: productId, product_name: productName, category, pricing, product_details, photos };
+  // Collect availability
+  const availChecks = document.querySelectorAll('#availability-dropdown input[type="checkbox"]:checked');
+  const availability = Array.from(availChecks).map(cb => cb.value).join(' - ') || null;
+
+  const payload = { product_id: productId, product_name: productName, category, pricing, product_details, photos, availability };
 
   let error;
   if (isEdit) {
@@ -423,6 +473,7 @@ async function saveProduct(isEdit, viewContainer) {
       pricing: pricing ? JSON.stringify(pricing) : null,
       photos: photos ? JSON.stringify(photos) : null,
       product_details: product_details ? JSON.stringify(product_details) : null,
+      availability,
     }];
     try {
       await fetch('https://primary-production-9e01d.up.railway.app/webhook/77983cde-93b5-4a59-9e9d-98af5105983d', {
