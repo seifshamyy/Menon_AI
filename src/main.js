@@ -48,10 +48,12 @@ const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 function openSidebar() {
     sidebar.classList.add('open');
     sidebarBackdrop.classList.add('visible');
+    menuToggle.classList.add('hidden');
 }
 function closeSidebar() {
     sidebar.classList.remove('open');
     sidebarBackdrop.classList.remove('visible');
+    menuToggle.classList.remove('hidden');
 }
 
 menuToggle?.addEventListener('click', () => {

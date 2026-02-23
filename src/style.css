@@ -1422,6 +1422,10 @@ body {
   transform: scale(0.92);
 }
 
+.menu-toggle.hidden {
+  display: none !important;
+}
+
 /* Sidebar backdrop overlay */
 .sidebar-backdrop {
   display: none;
