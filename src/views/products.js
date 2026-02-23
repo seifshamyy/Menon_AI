@@ -62,16 +62,7 @@ function getCategories() {
 }
 
 function renderView(container) {
-  const filtered = getFiltered();
   const categories = getCategories();
-
-  // Group by category
-  const grouped = {};
-  filtered.forEach(p => {
-    if (!grouped[p.category]) grouped[p.category] = [];
-    grouped[p.category].push(p);
-  });
-  const sortedGroups = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
 
   container.innerHTML = `
     <div class="view-header">
@@ -97,32 +88,76 @@ function renderView(container) {
       `).join('')}
     </div>
 
-    <!-- Category sections -->
-    ${sortedGroups.length === 0 ? renderEmpty() :
-      sortedGroups.map(([cat, items]) => `
-        <div class="category-section">
-          <div class="category-section-header">
-            <span class="category-section-title">${escHtml(cat)}</span>
-            <span class="category-section-count">${items.length} item${items.length !== 1 ? 's' : ''}</span>
-          </div>
-          <div class="cards-grid">
-            ${items.map(p => renderCard(p)).join('')}
-          </div>
-        </div>
-      `).join('')
-    }
+    <!-- Cards section — only this re-renders on search -->
+    <div id="cards-container"></div>
   `;
 
+  updateCards(container);
   bindEvents(container);
 }
 
-function renderCard(p) {
+/** Re-renders only the cards grid — preserves search input focus */
+function updateCards(container) {
+  const filtered = getFiltered();
+  const grouped = {};
+  filtered.forEach(p => {
+    if (!grouped[p.category]) grouped[p.category] = [];
+    grouped[p.category].push(p);
+  });
+  const sortedGroups = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
+
+  const cardsEl = container.querySelector('#cards-container');
+  if (!cardsEl) return;
+
+  cardsEl.innerHTML = sortedGroups.length === 0 ? renderEmpty() :
+    sortedGroups.map(([cat, items]) => `
+      <div class="category-section">
+        <div class="category-section-header">
+          <span class="category-section-title">${escHtml(cat)}</span>
+          <span class="category-section-count">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="cards-grid">
+          ${items.map((p, i) => renderCard(p, i)).join('')}
+        </div>
+      </div>
+    `).join('');
+
+  // Re-bind card events on new DOM
+  bindCardEvents(container);
+}
+
+function bindCardEvents(container) {
+  container.querySelectorAll('.product-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.card-footer')) return;
+      const id = card.dataset.viewId;
+      const product = allProducts.find(p => p.product_id === id);
+      if (product) openProductDetail(product);
+    });
+  });
+
+  container.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      const product = allProducts.find(p => p.product_id === id);
+      if (!product) return;
+      if (action === 'view') openProductDetail(product);
+      else if (action === 'edit') openProductForm(product, container);
+      else if (action === 'delete') confirmDelete(product, container);
+    });
+  });
+}
+
+function renderCard(p, index = 0) {
   const photos = normalizePhotos(p.photos);
   const pricing = parseJsonSafe(p.pricing);
   const priceLabel = pricing ? priceSummary(pricing) : null;
+  const delay = index * 0.04; // stagger
 
   return `
-    <div class="product-card" data-view-id="${escHtml(p.product_id)}">
+    <div class="product-card" data-view-id="${escHtml(p.product_id)}" style="animation-delay:${delay}s">
       <div class="card-body">
         <div class="card-product-id">${escHtml(p.product_id)}</div>
         <div class="card-product-name">${escHtml(p.product_name)}</div>
@@ -130,7 +165,7 @@ function renderCard(p) {
           <span class="card-chip category">${escHtml(p.category)}</span>
           ${priceLabel ? `<span class="card-chip price">${escHtml(priceLabel)}</span>` : ''}
         </div>
-        ${p.availability ? `<div class="card-availability">${escHtml(p.availability)}</div>` : ''}
+        ${p.availability ? `<div class="card-availability">${renderAvailPills(p.availability)}</div>` : ''}
       </div>
       <div class="card-footer">
         <button title="View" data-action="view" data-id="${escHtml(p.product_id)}">${icons.eye}</button>
@@ -138,6 +173,17 @@ function renderCard(p) {
         <button title="Delete" class="delete-btn" data-action="delete" data-id="${escHtml(p.product_id)}">${icons.trash}</button>
       </div>
     </div>`;
+}
+
+function renderAvailPills(text) {
+  if (!text) return '';
+  return text.split(' - ').map(item => {
+    const lower = item.toLowerCase();
+    let cls = 'showroom';
+    if (lower.includes('out of stock')) cls = 'out';
+    else if (lower.includes('in stock')) cls = 'stock';
+    return `<span class="avail-pill ${cls}">${escHtml(item.trim())}</span>`;
+  }).join('');
 }
 
 function priceSummary(obj) {
@@ -158,49 +204,26 @@ function renderEmpty() {
 
 // ─── Events ─────────────────────────────────────────
 function bindEvents(container) {
-  // Search
+  // Search — only re-render cards, preserves input focus
   container.querySelector('#product-search')?.addEventListener('input', (e) => {
     searchTerm = e.target.value.toLowerCase();
-    renderView(container);
+    updateCards(container);
   });
 
-  // Filter chips
+  // Filter chips — update active state + cards only
   container.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const cat = chip.dataset.cat;
       activeCategory = cat || null;
-      renderView(container);
+      container.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      updateCards(container);
     });
   });
 
-  // Add
+  // Add button
   container.querySelector('#add-product-btn')?.addEventListener('click', () => {
     openProductForm(null, container);
-  });
-
-  // Card click → view
-  container.querySelectorAll('.product-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-      // Ignore if clicking action buttons inside card-footer
-      if (e.target.closest('.card-footer')) return;
-      const id = card.dataset.viewId;
-      const product = allProducts.find(p => p.product_id === id);
-      if (product) openProductDetail(product);
-    });
-  });
-
-  // Row/card actions
-  container.querySelectorAll('[data-action]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.id;
-      const action = btn.dataset.action;
-      const product = allProducts.find(p => p.product_id === id);
-      if (!product) return;
-      if (action === 'view') openProductDetail(product);
-      else if (action === 'edit') openProductForm(product, container);
-      else if (action === 'delete') confirmDelete(product, container);
-    });
   });
 }
 
