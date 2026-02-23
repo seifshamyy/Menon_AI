@@ -39,3 +39,27 @@ themeToggle?.addEventListener('click', () => {
 
 // Boot
 switchView('products');
+
+// ── Mobile sidebar toggle ───────────────────────────
+const menuToggle = document.getElementById('menu-toggle');
+const sidebar = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarBackdrop.classList.add('visible');
+}
+function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarBackdrop.classList.remove('visible');
+}
+
+menuToggle?.addEventListener('click', () => {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+});
+sidebarBackdrop?.addEventListener('click', closeSidebar);
+
+// Close sidebar when a nav item is clicked (mobile)
+navBtns.forEach(btn => {
+    btn.addEventListener('click', closeSidebar);
+});
