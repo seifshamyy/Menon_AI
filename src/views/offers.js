@@ -192,12 +192,20 @@ function openOfferForm(offer, viewContainer) {
     let error;
 
     if (isEdit) {
-      ({ error } = await supabase.from(TABLE).update(payload).eq('id', offer.id));
+      // Pass the offer.id to the payload explicitly if needed by your schema/RLS,
+      // and ensure the update target is specifically targeting the integer id.
+      const targetId = Number(offer.id);
+      ({ error } = await supabase.from(TABLE).update(payload).eq('id', targetId));
     } else {
       ({ error } = await supabase.from(TABLE).insert(payload));
     }
 
-    if (error) { toast('Save failed: ' + error.message, 'error'); return; }
+    if (error) {
+      console.error('Save failed:', error);
+      toast('Save failed: ' + error.message, 'error');
+      return;
+    }
+
     toast(isEdit ? 'Offer updated' : 'Offer created', 'success');
     closeModal();
     renderOffers(viewContainer);
