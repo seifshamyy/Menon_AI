@@ -139,8 +139,8 @@ function bindEvents(container) {
 
   container.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id = Number(btn.dataset.id);
-      const offer = allOffers.find(o => Number(o.id) === id);
+      const idStr = String(btn.dataset.id);
+      const offer = allOffers.find(o => String(o.id) === idStr);
       if (!offer) return;
       if (btn.dataset.action === 'edit') openOfferForm(offer, container);
       else if (btn.dataset.action === 'delete') confirmDelete(offer, container);
@@ -190,12 +190,16 @@ function openOfferForm(offer, viewContainer) {
 
     const payload = { details, status: status || null };
     let error;
+    let data;
 
     if (isEdit) {
-      // Pass the offer.id to the payload explicitly if needed by your schema/RLS,
-      // and ensure the update target is specifically targeting the integer id.
-      const targetId = Number(offer.id);
-      ({ error } = await supabase.from(TABLE).update(payload).eq('id', targetId));
+      // Pass the offer.id exactly as-is. Avoid Number() to prevent BigInt precision loss!
+      ({ data, error } = await supabase.from(TABLE).update(payload).eq('id', String(offer.id)).select());
+
+      if (!error && (!data || data.length === 0)) {
+        console.error('Update returned no rows. ID mismatch or RLS prevented update.');
+        error = { message: 'No matching offer updated. Please verify ID or permissions.' };
+      }
     } else {
       ({ error } = await supabase.from(TABLE).insert(payload));
     }
