@@ -193,11 +193,15 @@ function openOfferForm(offer, viewContainer) {
     let data;
 
     if (isEdit) {
-      // Pass the offer.id exactly as it came from the database. 
-      ({ data, error } = await supabase.from(TABLE).update(payload).eq('id', offer.id).select());
+      console.log('Attempting to update offer with ID exactly as:', offer.id, 'Type:', typeof offer.id);
+
+      // Some databases require strictly an integer if it was fetched as a string from a DOM dataset
+      const numericId = Number(offer.id);
+
+      ({ data, error } = await supabase.from(TABLE).update(payload).eq('id', isNaN(numericId) ? offer.id : numericId).select());
 
       if (!error && (!data || data.length === 0)) {
-        console.error('Update returned no rows. ID mismatch or RLS prevented update.');
+        console.error('Update returned no rows. ID mismatch or RLS prevented update. Exact ID used:', isNaN(numericId) ? offer.id : numericId, 'Type used:', typeof (isNaN(numericId) ? offer.id : numericId));
         error = { message: 'No matching offer updated. Please verify ID or permissions.' };
       }
     } else {
