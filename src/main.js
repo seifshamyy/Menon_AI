@@ -3,6 +3,7 @@
 // ==============================
 import { renderProducts } from './views/products.js';
 import { renderOffers } from './views/offers.js';
+import { supabase } from './supabase.js';
 
 const viewContainer = document.getElementById('view-container');
 const navBtns = document.querySelectorAll('.nav-btn');
@@ -17,7 +18,9 @@ function switchView(view) {
 }
 
 navBtns.forEach(btn => {
-    btn.addEventListener('click', () => switchView(btn.dataset.view));
+    if (btn.hasAttribute('data-view')) {
+        btn.addEventListener('click', () => switchView(btn.dataset.view));
+    }
 });
 
 // ── Dark mode toggle ────────────────────────────────
@@ -63,5 +66,73 @@ sidebarBackdrop?.addEventListener('click', closeSidebar);
 
 // Close sidebar when a nav item is clicked (mobile)
 navBtns.forEach(btn => {
-    btn.addEventListener('click', closeSidebar);
+    // Only close sidebar for internal navigation buttons, not external links
+    if (btn.hasAttribute('data-view')) {
+        btn.addEventListener('click', closeSidebar);
+    }
 });
+
+// ── AI Status Toggles Logic ─────────────────────────
+const toggleMessenger = document.getElementById('toggle-messenger');
+const toggleWhatsapp = document.getElementById('toggle-whatsapp');
+
+async function initStatusToggles() {
+    try {
+        const { data, error } = await supabase
+            .from('menon_ai_status')
+            .select('*')
+            .in('id', [1, 2]);
+
+        if (error) throw error;
+
+        // Initialize toggles from database state
+        data.forEach(row => {
+            if (row.id === 1 && toggleMessenger) {
+                toggleMessenger.checked = row.status;
+                toggleMessenger.disabled = false;
+            } else if (row.id === 2 && toggleWhatsapp) {
+                toggleWhatsapp.checked = row.status;
+                toggleWhatsapp.disabled = false;
+            }
+        });
+
+        // Add event listeners for updating state
+        toggleMessenger?.addEventListener('change', async (e) => {
+            const newStatus = e.target.checked;
+            toggleMessenger.disabled = true; // disable during network request
+            const { error } = await supabase
+                .from('menon_ai_status')
+                .update({ status: newStatus })
+                .eq('id', 1);
+
+            toggleMessenger.disabled = false;
+            if (error) {
+                console.error('Error updating Messenger status:', error);
+                toggleMessenger.checked = !newStatus; // revert on fail
+                // Optionally show a toast error here
+            }
+        });
+
+        toggleWhatsapp?.addEventListener('change', async (e) => {
+            const newStatus = e.target.checked;
+            toggleWhatsapp.disabled = true; // disable during network request
+            const { error } = await supabase
+                .from('menon_ai_status')
+                .update({ status: newStatus })
+                .eq('id', 2);
+
+            toggleWhatsapp.disabled = false;
+            if (error) {
+                console.error('Error updating WhatsApp status:', error);
+                toggleWhatsapp.checked = !newStatus; // revert on fail
+                // Optionally show a toast error here
+            }
+        });
+
+    } catch (err) {
+        console.error('Failed to fetch initial menon_ai_status:', err);
+    }
+}
+
+// Initialize toggles independently of the views
+initStatusToggles();
