@@ -193,8 +193,8 @@ function openOfferForm(offer, viewContainer) {
     let data;
 
     if (isEdit) {
-      // Pass the offer.id exactly as-is. Avoid Number() to prevent BigInt precision loss!
-      ({ data, error } = await supabase.from(TABLE).update(payload).eq('id', String(offer.id)).select());
+      // Pass the offer.id exactly as it came from the database. 
+      ({ data, error } = await supabase.from(TABLE).update(payload).eq('id', offer.id).select());
 
       if (!error && (!data || data.length === 0)) {
         console.error('Update returned no rows. ID mismatch or RLS prevented update.');
