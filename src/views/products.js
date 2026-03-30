@@ -373,7 +373,7 @@ function openProductForm(product, viewContainer) {
         <div class="json-group" id="photos-group">
           <div class="json-group-title">Key / URL</div>
           <div id="photos-rows">
-            ${photoEntries.length > 0 ? photoEntries.map(([k, v]) => jsonRowHtml(k, v)).join('') : jsonRowHtml('', '')}
+            ${photoEntries.length > 0 ? photoEntries.map(([k, v]) => photoRowHtml(k, v)).join('') : photoRowHtml('', '')}
           </div>
           <button class="add-field-btn" id="add-photo-row">${icons.plus} Add photo</button>
         </div>
@@ -394,11 +394,13 @@ function openProductForm(product, viewContainer) {
     wireRemoveButtons();
   });
   document.getElementById('add-photo-row')?.addEventListener('click', () => {
-    document.getElementById('photos-rows').insertAdjacentHTML('beforeend', jsonRowHtml('', ''));
+    document.getElementById('photos-rows').insertAdjacentHTML('beforeend', photoRowHtml('', ''));
     wireRemoveButtons();
+    wirePhotoUploads();
   });
 
   wireRemoveButtons();
+  wirePhotoUploads();
 
   // Category dropdown logic
   const catSelect = document.getElementById('f-category-select');
@@ -440,6 +442,66 @@ function jsonRowHtml(key, val) {
     <input class="form-input val-input" placeholder="Value" value="${escHtml(String(val ?? ''))}" />
     <button class="remove-field-btn">${icons.minus}</button>
   </div>`;
+}
+
+function photoRowHtml(key, val) {
+  return `<div class="json-row photo-row" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+    <input class="form-input key-input" placeholder="Key" value="${escHtml(String(key))}" style="flex:0.6" />
+    <input class="form-input val-input" placeholder="URL" value="${escHtml(String(val ?? ''))}" style="flex:1" />
+    <label class="btn btn-sm btn-tonal upload-photo-btn" style="cursor:pointer; padding:0 12px; height:38px; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">
+      <span class="upload-text">Upload</span>
+      <input type="file" class="photo-file-input" accept="image/*" style="display:none" />
+    </label>
+    <button class="remove-field-btn" style="height:38px;">${icons.minus}</button>
+  </div>`;
+}
+
+function wirePhotoUploads() {
+  document.querySelectorAll('.photo-file-input:not(.wired)').forEach(input => {
+    input.classList.add('wired');
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const row = input.closest('.photo-row');
+      const urlInput = row.querySelector('.val-input');
+      const labelBtn = input.closest('.upload-photo-btn');
+      const textSpan = labelBtn.querySelector('.upload-text');
+      
+      const originalText = textSpan.textContent;
+      textSpan.textContent = 'Uploading...';
+      labelBtn.style.pointerEvents = 'none';
+      labelBtn.style.opacity = '0.7';
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const res = await fetch('https://primary-production-9e01d.up.railway.app/webhook/be3bfcdd-adb8-4fec-b2cb-91565ce8a23c?filename=' + encodeURIComponent(file.name), {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!res.ok) throw new Error('Upload failed with status ' + res.status);
+        
+        const data = await res.json();
+        if (data && data.link) {
+          urlInput.value = data.link;
+          toast('Photo uploaded successfully', 'success');
+        } else {
+          throw new Error('No link in response');
+        }
+      } catch (err) {
+        console.error('Upload Error:', err);
+        toast('Upload failed: ' + err.message, 'error');
+      } finally {
+        textSpan.textContent = originalText;
+        labelBtn.style.pointerEvents = 'auto';
+        labelBtn.style.opacity = '1';
+        input.value = '';
+      }
+    });
+  });
 }
 
 function wireRemoveButtons() {
