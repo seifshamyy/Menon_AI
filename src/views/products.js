@@ -163,6 +163,7 @@ function renderCard(p, index = 0) {
         <div class="card-product-name">${escHtml(p.product_name)}</div>
         <div class="card-meta">
           <span class="card-chip category">${escHtml(p.category)}</span>
+          ${p.main_price != null ? `<span class="card-chip price" style="background:var(--gold);color:#000;font-weight:600">EGP ${escHtml(p.main_price)}</span>` : ''}
           ${priceLabel ? `<span class="card-chip price">${escHtml(priceLabel)}</span>` : ''}
         </div>
         ${p.availability ? `<div class="card-availability">${renderAvailPills(p.availability)}</div>` : ''}
@@ -249,6 +250,10 @@ function openProductDetail(product) {
           <div class="detail-card-label">Availability</div>
           <div class="detail-card-value">${escHtml(product.availability || '—')}</div>
         </div>
+        <div class="detail-card">
+          <div class="detail-card-label">Main Price</div>
+          <div class="detail-card-value">${product.main_price != null ? escHtml('EGP ' + product.main_price) : '—'}</div>
+        </div>
         <div class="detail-card full-width">
           <div class="detail-card-label">Pricing</div>
           <div class="detail-card-value">${jsonToDetailHtml(product.pricing)}</div>
@@ -319,6 +324,11 @@ function openProductForm(product, viewContainer) {
           <option value="__new__">+ New category</option>
         </select>
         <input class="form-input" id="f-category-new" placeholder="Enter new category name" style="display:none;margin-top:6px" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Main Price (EGP)</label>
+        <input class="form-input" id="f-main-price" type="number" step="any" value="${isEdit && product.main_price != null ? escHtml(product.main_price) : ''}" placeholder="e.g. 1500.00" />
       </div>
 
       <div class="form-group">
@@ -475,7 +485,10 @@ async function saveProduct(isEdit, viewContainer) {
   const availChecks = document.querySelectorAll('#availability-dropdown input[type="checkbox"]:checked');
   const availability = Array.from(availChecks).map(cb => cb.value).join(' - ') || null;
 
-  const payload = { product_id: productId, product_name: productName, category, pricing, product_details, photos, availability };
+  const mainPriceRaw = document.getElementById('f-main-price')?.value.trim();
+  const main_price = mainPriceRaw ? Number(mainPriceRaw) : null;
+
+  const payload = { product_id: productId, product_name: productName, category, pricing, product_details, photos, availability, main_price };
 
   let error;
   if (isEdit) {
@@ -497,6 +510,7 @@ async function saveProduct(isEdit, viewContainer) {
       photos: photos ? JSON.stringify(photos) : null,
       product_details: product_details ? JSON.stringify(product_details) : null,
       availability,
+      main_price,
     }];
     try {
       await fetch('https://primary-production-9e01d.up.railway.app/webhook/77983cde-93b5-4a59-9e9d-98af5105983d', {
