@@ -476,8 +476,9 @@ function wirePhotoUploads() {
       try {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('filename', file.name);
         
-        const res = await fetch('https://primary-production-9e01d.up.railway.app/webhook/be3bfcdd-adb8-4fec-b2cb-91565ce8a23c?filename=' + encodeURIComponent(file.name), {
+        const res = await fetch('https://primary-production-9e01d.up.railway.app/webhook/be3bfcdd-adb8-4fec-b2cb-91565ce8a23c', {
           method: 'POST',
           body: formData
         });
