@@ -163,8 +163,7 @@ function renderCard(p, index = 0) {
         <div class="card-product-name">${escHtml(p.product_name)}</div>
         <div class="card-meta">
           <span class="card-chip category">${escHtml(p.category)}</span>
-          ${p.main_price != null ? `<span class="card-chip price" style="background:var(--gold);color:#000;font-weight:600">EGP ${escHtml(p.main_price)}</span>` : ''}
-          ${priceLabel ? `<span class="card-chip price">${escHtml(priceLabel)}</span>` : ''}
+          ${p.main_price != null ? `<span class="card-chip price" style="background:rgba(40, 167, 69, 0.15);color:#198754;font-weight:700;padding:2px 8px;border-radius:12px;">EGP ${escHtml(p.main_price)}</span>` : ''}
         </div>
         ${p.availability ? `<div class="card-availability">${renderAvailPills(p.availability)}</div>` : ''}
       </div>
