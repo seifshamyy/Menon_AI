@@ -38,6 +38,12 @@ export async function renderProducts(container) {
   renderView(container);
 }
 
+/** Refresh data after save/delete without resetting search or category filter */
+async function refreshProducts(container) {
+  allProducts = await fetchProducts();
+  renderView(container);
+}
+
 function getFiltered() {
   let list = allProducts;
   if (searchTerm) {
@@ -271,10 +277,40 @@ function openProductDetail(product) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="modal-close-btn2">Close</button>
+      <button id="modal-webhook-btn" title="Send to webhook" style="background:none;border:none;cursor:pointer;padding:6px;opacity:0.35;color:var(--text,#333);display:flex;align-items:center;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='0.35'">${icons.zap}</button>
     </div>
   `);
   document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
   document.getElementById('modal-close-btn2')?.addEventListener('click', closeModal);
+  document.getElementById('modal-webhook-btn')?.addEventListener('click', () => sendProductWebhook(product));
+}
+
+// ─── Webhook ────────────────────────────────────────
+async function sendProductWebhook(product) {
+  const btn = document.getElementById('modal-webhook-btn');
+  if (btn) { btn.style.opacity = '0.2'; btn.style.pointerEvents = 'none'; }
+  try {
+    const payload = [{
+      product_id: product.product_id,
+      product_name: product.product_name,
+      category: product.category,
+      pricing: product.pricing ? JSON.stringify(product.pricing) : null,
+      photos: product.photos ? JSON.stringify(product.photos) : null,
+      product_details: product.product_details ? JSON.stringify(product.product_details) : null,
+      availability: product.availability,
+      main_price: product.main_price,
+    }];
+    await fetch('https://primary-production-9e01d.up.railway.app/webhook/77983cde-93b5-4a59-9e9d-98af5105983d', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    toast('Sent to webhook', 'success');
+  } catch (e) {
+    toast('Webhook failed: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.style.opacity = '0.35'; btn.style.pointerEvents = 'auto'; }
+  }
 }
 
 // ─── Form (Add / Edit) ─────────────────────────────
@@ -588,7 +624,7 @@ async function saveProduct(isEdit, viewContainer) {
   }
 
   closeModal();
-  renderProducts(viewContainer);
+  refreshProducts(viewContainer);
 }
 
 // ─── Delete ─────────────────────────────────────────
@@ -614,6 +650,6 @@ function confirmDelete(product, viewContainer) {
     if (error) { toast('Delete failed: ' + error.message, 'error'); return; }
     toast('Product deleted', 'success');
     closeModal();
-    renderProducts(viewContainer);
+    refreshProducts(viewContainer);
   });
 }

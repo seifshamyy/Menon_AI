@@ -34,6 +34,21 @@ export async function renderOffers(container) {
   renderView(container);
 }
 
+/** Refresh data after save/delete without resetting search or page */
+async function refreshOffers(container) {
+  allOffers = await fetchOffers();
+  filtered = searchTerm
+    ? allOffers.filter(o =>
+        (o.details || '').toLowerCase().includes(searchTerm) ||
+        (o.status || '').toLowerCase().includes(searchTerm) ||
+        String(o.id).includes(searchTerm)
+      )
+    : allOffers;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (page > totalPages) page = totalPages;
+  renderView(container);
+}
+
 function renderView(container) {
   const start = (page - 1) * PAGE_SIZE;
   const pageItems = filtered.slice(start, start + PAGE_SIZE);
@@ -216,7 +231,7 @@ function openOfferForm(offer, viewContainer) {
 
     toast(isEdit ? 'Offer updated' : 'Offer created', 'success');
     closeModal();
-    renderOffers(viewContainer);
+    refreshOffers(viewContainer);
   });
 }
 
@@ -244,6 +259,6 @@ function confirmDelete(offer, viewContainer) {
     if (error) { toast('Delete failed: ' + error.message, 'error'); return; }
     toast('Offer deleted', 'success');
     closeModal();
-    renderOffers(viewContainer);
+    refreshOffers(viewContainer);
   });
 }
