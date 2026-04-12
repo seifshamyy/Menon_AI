@@ -277,7 +277,7 @@ function openProductDetail(product) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="modal-close-btn2">Close</button>
-      <button id="modal-webhook-btn" title="Send to webhook" style="background:none;border:none;cursor:pointer;padding:6px;opacity:0.35;color:var(--text,#333);display:flex;align-items:center;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='0.35'">${icons.zap}</button>
+      <button id="modal-webhook-btn" title="Send to webhook" style="background:none;border:none;cursor:pointer;padding:6px;opacity:0.35;color:var(--text,#333);display:flex;align-items:center;transition:opacity 0.15s;width:32px;height:32px;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='0.35'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></button>
     </div>
   `);
   document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
